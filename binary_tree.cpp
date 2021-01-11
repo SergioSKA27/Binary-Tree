@@ -1,6 +1,8 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <stack>
+#include <queue>
 #include <cstdlib>
 
 template <class type>
@@ -77,13 +79,12 @@ template <class Type>
 class Binary_tree
 {
 private:
-    Node<Type> Root;           //Raiz del arbol
-    Node<Type> *nodes;         //Variable para crear los nodos
-    int nods;                  //Numero de nodos del arbol
-    int levels;                //Niveles del arbol
-    int leafs;                 //Hojas del arbol
-    bool emptystate;           //Ver si el arbol esta vacio
-    std::vector<Type> inorder; //Vector para recorrido in order
+    Node<Type> Root;   //Raiz del arbol
+    Node<Type> *nodes; //Variable para crear los nodos
+    int nods;          //Numero de nodos del arbol
+    int levels;        //Niveles del arbol
+    int leafs;         //Hojas del arbol
+    bool emptystate;   //Ver si el arbol esta vacio
 
 public:
     //Costructores
@@ -99,9 +100,9 @@ public:
 
     //Metodos de acceso
     Node<Type> *root();
-    std::vector<Type> in_order();
-    std::vector<Type> pre_order();
-    std::vector<Type> post_order();
+    void in_order(Node<Type> *nde, std::vector<Type> &list);   //recibe un nodo y un vector retorna el recorrido in order en el vector seleccionado
+    void pre_order(Node<Type> *nde, std::vector<Type> &list);  //recibe un nodo y un vector retorna el recorrido pre order en el vector seleccionado
+    void post_order(Node<Type> *nde, std::vector<Type> &list); //recibe un nodo y un vector retorna el recorrido post order en el vector seleccionado
 
     //Verificar si el arbol es(vacio, completo o lleno)
     bool empty();    //Verificar si el arbol esta vacio
@@ -217,6 +218,53 @@ Node<Type> *Binary_tree<Type>::root()
     return &this->Root;
 }
 
+template <class Type>
+void Binary_tree<Type>::in_order(Node<Type> *nde, std::vector<Type> &list)
+{
+    if (this->emptystate)
+        throw std::invalid_argument("Tree is empty");
+
+    if (nde == NULL)
+        return;
+    else
+    {
+        this->in_order(nde->left, list);
+        list.push_back(nde->getdata());
+        this->in_order(nde->rigth, list);
+    }
+}
+
+template <class Type>
+void Binary_tree<Type>::post_order(Node<Type> *nde, std::vector<Type> &list)
+{
+    if (this->emptystate)
+        throw std::invalid_argument("Tree is empty");
+
+    if (nde == NULL)
+        return;
+    else
+    {
+        this->in_order(nde->left, list);
+        this->in_order(nde->rigth, list);
+        list.push_back(nde->getdata());
+    }
+}
+
+template <class Type>
+void Binary_tree<Type>::pre_order(Node<Type> *nde, std::vector<Type> &list)
+{
+    if (this->emptystate)
+        throw std::invalid_argument("Tree is empty");
+
+    if (nde == NULL)
+        return;
+    else
+    {
+        list.push_back(nde->getdata());
+        this->in_order(nde->left, list);
+        this->in_order(nde->rigth, list);
+    }
+}
 /*
 template <class Type>
 Binary_tree<Type>::Binary_tree(Type Data)
@@ -253,15 +301,29 @@ Binary_tree<Type>::~Binary_tree()
 {
 }
 
+template <class t>
+void printvector(std::vector<t> &v)
+{
+
+    for (int i = 0; i < v.size(); i++)
+    {
+        std::cout << v[i] << "  ";
+    }
+    std::cout << std::endl;
+}
+
 int main(int argc, char const *argv[])
 {
     Binary_tree<int> BIN(10);
-    Node<int> *N;
+    std::vector<int> InO;
     BIN.setroot(100);
     BIN.showroot();
-    BIN.insertleft(BIN.root(), 10);
-    BIN.insertrigth(BIN.root(), 1);
-    BIN.root()->left->showdata();
+    BIN.insertleft(BIN.insertleft(BIN.insertleft(1), 10), 15);
+    BIN.insertrigth(BIN.insertrigth(BIN.insertrigth(BIN.root(), -4), 10), -111);
+
+    BIN.root()->left->left->left->showdata();
+    BIN.pre_order(BIN.root(), InO);
+    printvector(InO);
 
     return 0;
 }
