@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 #include <vector>
 #include <string>
 #include <stack>
@@ -78,7 +79,7 @@ Node<type>::~Node()
 template <class Type>
 class Binary_tree
 {
-private:
+protected:
     Node<Type> *Root;  //Raiz del arbol
     Node<Type> *nodes; //Variable para crear los nodos
     int nods;          //Numero de nodos del arbol
@@ -358,146 +359,615 @@ void printvector(std::vector<t> &v)
 }
 
 //funciones para crear arboles de expresiones
-bool is_operator(std::string op)
+bool is_operator(char op)
 {
-    return (op == "+" || op == "-" || op == "*" || op == "/" || op == "^");
+    return (op == '+' || op == '-' || op == '*' || op == '/' || op == '^');
 }
 
-void insert_hijos(Binary_tree<std::string> &tree, Node<std::string> *node, std::stack<std::string> &Stack)
+class SintaxTree : public Binary_tree<std::string>
 {
-    if (Stack.empty()) //si la pila esta vacia retornamos
-        return;
+private:
+    char Type;               //tipo de expresion(sufijo o prefijo)
+    std::string expr;        //expresion
+    std::string infijo_expr; //expresion infijo de la expresion
 
-    if (is_operator(Stack.top()) && tree.empty()) //si el arbol esta vacio colocamos el top como raiz
+    int value;
+
+    std::string infijo_to_sufijo(std::string expr);  //convierte una expresion infijo a sufijo
+    std::string infijo_to_prefijo(std::string expr); //convierte una expresion infijo a prefijo
+
+    bool is_operator(char op);          //Determina si un caracter es operador
+    inline bool is_parentheses(char c); //determina si un operador es parentesis
+    int precedence(char c);             //precedencia de los operadores
+    int association_order(char c);      //Orden de asociacion
+
+    int EvalOp(int valA, char op, int valB);
+
+public:
+    SintaxTree(char type, std::string expr); //recibe el tipo de expresion(sufijo o prefijo) y la expresion en infijo
+    SintaxTree(std::string expr_infijo);     //recibe una expresion infijo y la transforma a sufijo
+    SintaxTree();                            //Constructor vacio
+
+    SintaxTree &set_expresion(std::string new_expr);  //Cambia la expresion por una infijo la transoforma al tipo de formato del arbol(infijo o sufijo)
+    SintaxTree &_set_expresion(std::string new_expr); //Cambia la expresion en el arbol por otra en el mismo formato
+
+    void print_expresion();
+    void print_infijo();
+
+    int solve();
+
+    ~SintaxTree();
+};
+
+SintaxTree::SintaxTree(char type, std::string expr)
+{ //recibe el tipo de expresion(infijo o prefijo) y la expresion en dicho formato
+    this->Type = type;
+    this->value = 0;
+
+    if (type == 's' || type == 'S')
     {
-        tree.setroot(Stack.top());
-        Stack.pop();
-        Node<std::string> *r = tree.root(); //puntero a la raiz
+        this->emptystate = false;
+        this->nods = expr.size();
+        this->expr = this->infijo_to_sufijo(expr);
+        std::stack<Node<std::string> *> S;
 
-        insert_hijos(tree, r, Stack); //insertamos los hijos a la derecha de la raiz
-
-        if (is_operator(Stack.top()))
-        { //insertamos los hijos a la izquierda de la raiz
-            Node<std::string> *izq = tree.insertleft(r, Stack.top());
-            Stack.pop();
-            insert_hijos(tree, izq, Stack);
-            return;
-        }
-        else
+        for (int i = 0; i < this->expr.size(); i++)
         {
-            tree.insertleft(Stack.top());
-            Stack.pop();
-            return;
+            std::string actual(1, this->expr[i]);
+
+            this->nodes = new Node<std::string>(actual);
+
+            if (this->is_operator(this->expr[i]))
+            {
+                Node<std::string> *der = S.top();
+                S.pop();
+                Node<std::string> *izq = S.top();
+                S.pop();
+
+                this->nodes->left = izq;
+                this->nodes->rigth = der;
+                izq->father = this->nodes;
+                der->father = this->nodes;
+            }
+
+            S.push(this->nodes);
         }
+        this->Root = S.top();
     }
-
-    if (is_operator(Stack.top()))
+    else if (type == 'P' || type == 'p')
     {
-        Node<std::string> *aux = tree.insertrigth(node, Stack.top());
-        Stack.pop();
-        insert_hijos(tree, aux, Stack);
+        this->emptystate = false;
+        this->nods = expr.size();
+        this->expr = this->infijo_to_prefijo(expr);
+        std::stack<Node<std::string> *> S;
 
-        if (is_operator(Stack.top()))
+        for (int i = this->expr.size() - 1; i >= 0; i--)
         {
-            Node<std::string> *aux2 = tree.insertleft(node, Stack.top());
-            Stack.pop();
-            insert_hijos(tree, aux2, Stack);
-            return;
+            std::string actual(1, this->expr[i]);
+
+            this->nodes = new Node<std::string>(actual);
+
+            if (this->is_operator(this->expr[i]))
+            {
+                Node<std::string> *der = S.top();
+                S.pop();
+                Node<std::string> *izq = S.top();
+                S.pop();
+
+                this->nodes->rigth = der;
+                this->nodes->left = izq;
+                der->father = this->nodes;
+                izq->father = this->nodes;
+            }
+
+            S.push(this->nodes);
         }
-        else
-        {
-            tree.insertleft(node, Stack.top());
-            Stack.pop();
-            return;
-        }
+
+        this->Root = this->nodes;
     }
     else
     {
-        tree.insertrigth(node, Stack.top());
-        Stack.pop();
-        return;
+        throw std::invalid_argument("Invalid type(Valid types are S or P\n");
     }
+
+    this->infijo_expr = expr;
 }
 
-/*void insert_hijos(Node<std::string> *node, std::stack<Node<std::string> *> &Stack)
-{ //inserta los hijos de un nodo tomando un stack de nodos y insertando los hijos de manera recursiva
-    if (Stack.empty())
-        return;
-    if (is_operator(Stack.top()->getdata()))
-    {
-        node->rigth = Stack.top();
-        Stack.pop();
-        insert_hijos(node->rigth, Stack);
+SintaxTree::SintaxTree(std::string expr_infijo)
+{ //Recibe una expresion infijo, la convierte a sufijo y crea el arbol
+    this->value = 0;
+    this->expr = this->infijo_to_sufijo(expr_infijo);
+    this->nods = this->expr.size();
+    this->emptystate = false;
+    this->Type = 'S';
 
-        if (is_operator(Stack.top()->getdata()))
+    std::stack<Node<std::string> *> S;
+
+    for (int i = 0; i < this->expr.size(); i++)
+    {
+        std::string actual(1, this->expr[i]);
+
+        this->nodes = new Node<std::string>(actual);
+
+        if (this->is_operator(this->expr[i]))
         {
-            node->left = Stack.top();
-            Stack.pop();
-            insert_hijos(node->left, Stack);
+            Node<std::string> *der = S.top();
+            S.pop();
+            Node<std::string> *izq = S.top();
+            S.pop();
+
+            this->nodes->left = izq;
+            this->nodes->rigth = der;
+            izq->father = this->nodes;
+            der->father = this->nodes;
         }
-        else
+
+        S.push(this->nodes);
+    }
+    this->Root = S.top();
+
+    this->infijo_expr = expr;
+}
+
+SintaxTree::SintaxTree()
+{
+    this->nodes = NULL;
+    this->Root = NULL;
+    this->nods = 0;
+    this->emptystate = true;
+    this->value = 0;
+}
+
+SintaxTree &SintaxTree::set_expresion(std::string new_expr)
+{
+    if (!this->emptystate)
+        this->prune(this->root()); //limpiamos el arbol
+    if (Type == 's' || Type == 'S')
+    {
+        this->emptystate = false;
+        this->nods = expr.size();
+        this->expr = this->infijo_to_sufijo(new_expr);
+        std::stack<Node<std::string> *> S;
+
+        for (int i = 0; i < this->expr.size(); i++)
         {
-            node->left = Stack.top();
-            Stack.pop();
+            std::string actual(1, this->expr[i]);
+
+            this->nodes = new Node<std::string>(actual);
+
+            if (this->is_operator(this->expr[i]))
+            {
+                Node<std::string> *der = S.top();
+                S.pop();
+                Node<std::string> *izq = S.top();
+                S.pop();
+
+                this->nodes->left = izq;
+                this->nodes->rigth = der;
+                izq->father = this->nodes;
+                der->father = this->nodes;
+            }
+
+            S.push(this->nodes);
         }
+        this->Root = S.top();
     }
     else
     {
-        node->rigth = Stack.top();
-        Stack.pop();
+        this->emptystate = false;
+        this->nods = expr.size();
+        this->expr = this->infijo_to_prefijo(new_expr);
+        std::stack<Node<std::string> *> S;
 
-        if (is_operator(Stack.top()->getdata()))
+        for (int i = this->expr.size() - 1; i >= 0; i--)
         {
-            node->left = Stack.top();
-            Stack.pop();
-            insert_hijos(node->left, Stack);
+            std::string actual(1, this->expr[i]);
+
+            this->nodes = new Node<std::string>(actual);
+
+            if (this->is_operator(this->expr[i]))
+            {
+                Node<std::string> *der = S.top();
+                S.pop();
+                Node<std::string> *izq = S.top();
+                S.pop();
+
+                this->nodes->rigth = der;
+                this->nodes->left = izq;
+                der->father = this->nodes;
+                izq->father = this->nodes;
+            }
+
+            S.push(this->nodes);
+        }
+
+        this->Root = this->nodes;
+    }
+    this->infijo_expr = expr;
+
+    return *this;
+}
+
+SintaxTree &SintaxTree::_set_expresion(std::string new_expr)
+{
+    if (!this->emptystate)
+        this->prune(this->root()); //limpiamos el arbol
+    if (Type == 's' || Type == 'S')
+    {
+        this->expr = new_expr;
+        this->emptystate = false;
+        this->nods = expr.size();
+
+        std::stack<Node<std::string> *> S;
+
+        for (int i = 0; i < this->expr.size(); i++)
+        {
+            std::string actual(1, this->expr[i]);
+
+            this->nodes = new Node<std::string>(actual);
+
+            if (this->is_operator(this->expr[i]))
+            {
+                Node<std::string> *der = S.top();
+                S.pop();
+                Node<std::string> *izq = S.top();
+                S.pop();
+
+                this->nodes->left = izq;
+                this->nodes->rigth = der;
+                izq->father = this->nodes;
+                der->father = this->nodes;
+            }
+
+            S.push(this->nodes);
+        }
+        this->Root = S.top();
+    }
+    else
+    {
+        this->expr = new_expr;
+        this->emptystate = false;
+        this->nods = expr.size();
+
+        std::stack<Node<std::string> *> S;
+
+        for (int i = this->expr.size() - 1; i >= 0; i--)
+        {
+            std::string actual(1, this->expr[i]);
+
+            this->nodes = new Node<std::string>(actual);
+
+            if (this->is_operator(this->expr[i]))
+            {
+                Node<std::string> *der = S.top();
+                S.pop();
+                Node<std::string> *izq = S.top();
+                S.pop();
+
+                this->nodes->rigth = der;
+                this->nodes->left = izq;
+                der->father = this->nodes;
+                izq->father = this->nodes;
+            }
+
+            S.push(this->nodes);
+        }
+
+        this->Root = this->nodes;
+    }
+    this->infijo_expr = expr;
+
+    return *this;
+}
+
+bool SintaxTree::is_operator(char op)
+{
+    return (op == '+' || op == '-' || op == '*' || op == '/' || op == '^');
+}
+
+inline bool SintaxTree::is_parentheses(char c)
+{
+    return (c == '(' || c == ')');
+}
+
+int SintaxTree::precedence(char c)
+{
+    switch (c)
+    {
+    case '+':
+    case '-':
+        return 0;
+
+    case '*':
+    case '/':
+        return 1;
+
+    case '^':
+        return 2;
+
+    default:
+        return -1;
+    }
+}
+
+int SintaxTree::association_order(char c)
+{
+    switch (c)
+    {
+    case '^':
+        return -1;
+    case '*':
+    case '/':
+    case '-':
+    case '+':
+        return 1;
+
+    default:
+        return 0;
+    }
+}
+
+std::string SintaxTree::infijo_to_sufijo(std::string expr)
+{
+    std::string result = "";
+    std::stack<char> Pl;
+
+    for (int i = 0; i < expr.size(); i++)
+    {
+        if (this->is_operator(expr[i]))
+        {
+            //Si es operador se compara contra la pila
+            while (!Pl.empty() && this->precedence(Pl.top()) > this->precedence(expr[i]))
+            { //Si el top es de mayor precedencia que el operador actual lo escribimos
+                result = result + Pl.top();
+                Pl.pop();
+            }
+
+            if (Pl.empty() || this->precedence(Pl.top()) < this->precedence(expr[i]) || this->is_parentheses(Pl.top()))
+            { //si la pila esta vacia o el operador en turno de es de menor precedencia que el top de la pila
+                Pl.push(expr[i]);
+            }
+            else
+            { //El operador en turno y el top de la pila tienen la misma precedencia
+
+                if (this->association_order(expr[i]) > 0) //izquierda a derecha
+                {
+                    result = result + Pl.top();
+                    Pl.pop();
+                    Pl.push(expr[i]);
+                }
+                else
+                {
+                    Pl.push(expr[i]);
+                }
+            }
         }
         else
         {
-            node->left = Stack.top();
-            Stack.pop();
+            if (this->is_parentheses(expr[i]))
+            { //Si es parentesis revisamos si abre o cierra
+                if (expr[i] == '(')
+                {
+                    Pl.push(expr[i]); //si es un parentesis que abre lo ponemos en la pila
+                }
+                else
+                { //si el parentesis cierra sacamos los operadores de la pila hasta encontrar el que abre
+                    while (Pl.top() != '(' && !Pl.empty())
+                    {
+                        result = result + Pl.top();
+                        Pl.pop();
+                    }
+                    Pl.pop(); //eliminamos el parentesis que abre
+                }
+            }
+            else
+            {
+                //Si es operando lo escribimos directamente
+                result = result + expr[i];
+            }
         }
     }
+
+    while (!Pl.empty())
+    {
+        result = result + Pl.top();
+        Pl.pop();
+    }
+
+    return result;
 }
-*/
-void sufijo_arbol(std::string exp)
+
+std::string SintaxTree::infijo_to_prefijo(std::string expr)
 {
-    std::stack<std::string> Str;
-    Binary_tree<std::string> arbol;
+    std::string result = "";
+    std::stack<char> Pl;
+
+    for (int i = expr.size() - 1; i >= 0; i--)
+    {
+        if (this->is_operator(expr[i]))
+        {
+            //Si es operador se compara contra la pila
+            while (!Pl.empty() && this->precedence(Pl.top()) > this->precedence(expr[i]))
+            { //Si el top es de mayor precedencia que el operador actual lo escribimos
+                result = Pl.top() + result;
+                Pl.pop();
+            }
+
+            if (Pl.empty() || this->precedence(Pl.top()) < this->precedence(expr[i]) || this->is_parentheses(Pl.top()))
+            { //si la pila esta vacia o el operador en turno de es de menor precedencia que el top de la pila
+                Pl.push(expr[i]);
+            }
+            else
+            { //El operador en turno y el top de la pila tienen la misma precedencia
+
+                if (this->association_order(expr[i]) < 0) //derecha a izquierda
+                {
+                    result = Pl.top() + result;
+                    Pl.pop();
+                    Pl.push(expr[i]);
+                }
+                else
+                {
+                    Pl.push(expr[i]);
+                }
+            }
+        }
+        else
+        {
+            if (this->is_parentheses(expr[i]))
+            { //Si es parentesis revisamos si abre o cierra
+                if (expr[i] == ')')
+                {
+                    Pl.push(expr[i]); //si es un parentesis que abre lo ponemos en la pila
+                }
+                else
+                { //si el parentesis cierra sacamos los operadores de la pila hasta encontrar el que abre
+                    while (Pl.top() != ')' && !Pl.empty())
+                    {
+                        result = Pl.top() + result;
+                        Pl.pop();
+                    }
+                    Pl.pop(); //eliminamos el parentesis que abre
+                }
+            }
+            else
+            {
+                //Si es operando lo escribimos directamente
+                result = expr[i] + result;
+            }
+        }
+    }
+
+    while (!Pl.empty())
+    {
+        result = Pl.top() + result;
+        Pl.pop();
+    }
+
+    return result;
+}
+
+void SintaxTree::print_expresion()
+{
+    if (this->emptystate)
+        throw std::invalid_argument("Tree is empty\n");
+
+    std::cout << this->expr << std::endl;
+}
+
+void SintaxTree::print_infijo()
+{
+
     std::vector<std::string> V;
 
-    for (int i = 0; i < exp.size(); i++)
-    {
-        std::string actual(1, exp[i]);
+    if (this->emptystate)
+        throw std::invalid_argument("Tree is empty\n");
 
-        Str.push(actual);
+    std::cout << this->infijo_expr << std::endl;
+}
+
+int SintaxTree::EvalOp(int valA, char op, int valB)
+{
+    if (op == '^')
+    {
+        return std::pow(valA, valB);
+    }
+    else if (op == '*')
+    {
+        return valA * valB;
+    }
+    if (op == '/')
+    {
+        return valA / valB;
+    }
+    if (op == '+')
+    {
+        return valA + valB;
+    }
+    if (op == '-')
+    {
+        return valA - valB;
     }
 
-    insert_hijos(arbol, NULL, Str);
+    return 0;
+}
 
-    arbol.pre_order(arbol.root(), V);
+int SintaxTree::solve()
+{
+    if (this->emptystate)
+        throw std::invalid_argument("Empty Tree\n");
 
-    printvector<std::string>(V);
+    std::stack<std::string> pl;
+    if (Type == 's' || Type == 'S')
+    {
+        for (int i = 0; i < this->expr.size(); i++)
+        {
+            std::string act(1, this->expr[i]);
+
+            if (this->is_operator(this->expr[i]))
+            {
+                int A = std::stoi(pl.top());
+                pl.pop();
+                int B = std::stoi(pl.top());
+                pl.pop();
+
+                std::string C = std::to_string(this->EvalOp(B, this->expr[i], A));
+                pl.push(C);
+            }
+            else
+            {
+                pl.push(act);
+            }
+        }
+    }
+    else
+    {
+
+        for (int i = this->expr.size() - 1; i >= 0; i--)
+        {
+            std::string act(1, this->expr[i]);
+
+            if (this->is_operator(this->expr[i]))
+            {
+                int A = std::stoi(pl.top());
+                pl.pop();
+                int B = std::stoi(pl.top());
+                pl.pop();
+
+                std::string C = std::to_string(this->EvalOp(A, this->expr[i], B));
+                pl.push(C);
+            }
+            else
+            {
+                pl.push(act);
+            }
+        }
+    }
+
+    return std::stoi(pl.top());
+}
+
+SintaxTree::~SintaxTree()
+{
 }
 
 int main(int argc, char const *argv[])
 {
-    std::string s = "72ˆ653+*+9-";
+    std::string expr = "7^2+6*(5+3)-9";
+    SintaxTree A('s', expr); //arbol sufijo
+    SintaxTree B('p', expr); //arbol prefijo
+    std::vector<std::string> InO, inO2;
 
-    sufijo_arbol(s);
+    std::cout << A.solve() << "\n";
 
-    /*Binary_tree<int> BIN(10);
-    std::vector<int> InO;
-    BIN.setroot(1);
-    BIN.showroot();
-    BIN.insertleft(BIN.insertleft(2), 4);
-    BIN.insertrigth(BIN.root()->left, 5);
-    BIN.insertrigth(BIN.insertrigth(BIN.insertrigth(3), 6), 9);
-    BIN.insertleft(BIN.insertleft(BIN.root()->rigth->rigth, 8), 11);
-
-    BIN.post_order(BIN.root(), InO);
+    A.print_expresion();
+    A.in_order(A.root(), InO);
     printvector(InO);
-    std::cout << BIN.countleafs() << std::endl;*/
+
+    std::cout << B.solve() << "\n";
+    B.print_expresion();
+    B.in_order(A.root(), inO2);
+    printvector(inO2);
 
     return 0;
 }
