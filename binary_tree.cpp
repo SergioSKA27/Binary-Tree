@@ -966,7 +966,7 @@ int main(int argc, char const *argv[])
 
     std::cout << B.solve() << "\n";
     B.print_expresion();
-    B.in_order(A.root(), inO2);
+    B.in_order(B.root(), inO2);
     printvector(inO2);
 
     return 0;
