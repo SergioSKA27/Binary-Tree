@@ -50,16 +50,37 @@ private:
     Node<T> *root;  //nodo raiz
     size_t _size;
 
-    //Inserta un la data en un nodo especifico
-    void insert_node(Node<T> *node, T data);
+    void insert_node(Node<T> *node, T data); //Inserta un la data en un nodo especifico
+
+    void in_ord(Node<T> *node, std::vector<T> &v);   //realiza el recorrido in order sobre algun nodo y guarda los datos en un vector
+    void pre_ord(Node<T> *node, std::vector<T> &v);  //realiza el recorrido pre order sobre algun nodo y guarda los datos en un vector
+    void post_ord(Node<T> *node, std::vector<T> &v); //realiza el recorrido post order sobre algun nodo y guarda los datos en un vector
+
+    T _min(Node<T> *node); // retorna el minimo elemento de un sub arbol
+    T _max(Node<T> *node); //retorna el maximo elemento de un sub arbol
+
+    void del(Node<T> *node); //elimina un nodo y todo su arbol de descendientes
 
 public:
     BinaryTree();
+    BinaryTree(std::vector<T> &v); //inicializa el arbol con los elementos de un vector
+
     void insert(T data); //inserta un elemento al arbol
 
+    T minimo(); //retorna el elemento minimo
+    T max();    //retorna el elemento maximo
+
+    void clear(); //elimina todos los elementos del arbol
+
+    std::vector<T> in_order();   //retorna un vector con el recorrido in order
+    std::vector<T> pre_order();  //retorna un vector con el recorrido in order
+    std::vector<T> post_order(); //retorna un vector con el recorrido in order
+
     void print_tree();
-    T minimo();
-    T max();
+
+    Node<T> *begin(); //retorna un puntero a la raiz de arbol
+    Node<T> *end();   //retorna un puntero nulo
+
     ~BinaryTree();
 };
 
@@ -69,6 +90,19 @@ BinaryTree<T>::BinaryTree()
     this->root = nullptr;
     this->nodes = nullptr;
     this->_size = 0;
+}
+
+template <class T>
+BinaryTree<T>::BinaryTree(std::vector<T> &v)
+{
+    this->root = nullptr;
+    this->nodes = nullptr;
+    this->_size = 0;
+
+    for (auto i : v)
+    {
+        this->insert(i);
+    }
 }
 
 template <class T>
@@ -135,6 +169,22 @@ T BinaryTree<T>::minimo()
 }
 
 template <class T>
+T BinaryTree<T>::_min(Node<T> *node)
+{
+    Node<T> *itr;
+    T min;
+    if (this->root == nullptr)
+        throw std::out_of_range("Tree is empty!");
+    itr = node;
+    while (itr)
+    {
+        min = itr->Data;
+        itr = itr->left;
+    }
+    return min;
+}
+
+template <class T>
 T BinaryTree<T>::max()
 {
     Node<T> *itr;
@@ -148,6 +198,85 @@ T BinaryTree<T>::max()
         itr = itr->rigth;
     }
     return m;
+}
+
+template <class T>
+T BinaryTree<T>::_max(Node<T> *node)
+{
+    Node<T> *itr;
+    T m;
+    if (this->root == nullptr)
+        throw std::out_of_range("Tree is empty!");
+    itr = node;
+    while (itr)
+    {
+        m = itr->Data;
+        itr = itr->rigth;
+    }
+    return m;
+}
+
+template <class T>
+void BinaryTree<T>::pre_ord(Node<T> *node, std::vector<T> &v)
+{
+    if (node == nullptr)
+        return;
+
+    v.push_back(node->Data);
+    pre_ord(node->left);
+    pre_ord(node->rigth);
+}
+
+template <class T>
+void BinaryTree<T>::in_ord(Node<T> *node, std::vector<T> &v)
+{
+    if (node == nullptr)
+        return;
+
+    pre_ord(node->left);
+    v.push_back(node->Data);
+    pre_ord(node->rigth);
+}
+
+template <class T>
+void BinaryTree<T>::post_ord(Node<T> *node, std::vector<T> &v)
+{
+    if (node == nullptr)
+        return;
+
+    pre_ord(node->left);
+    pre_ord(node->rigth);
+    v.push_back(node->Data);
+}
+
+template <class T>
+std::vector<T> BinaryTree<T>::pre_order()
+{
+    if (this->root == nullptr)
+        throw std::out_of_range("Tree is empty!");
+    std::vector<T> pre;
+    this->pre_ord(this->root, pre);
+    return pre;
+}
+
+template <class T>
+std::vector<T> BinaryTree<T>::in_order()
+{
+    if (this->root == nullptr)
+        throw std::out_of_range("Tree is empty!");
+    std::vector<T> in;
+    this->in_ord(this->root, in);
+    return in;
+}
+
+template <class T>
+std::vector<T> BinaryTree<T>::post_order()
+{
+    if (this->root == nullptr)
+        throw std::out_of_range("Tree is empty!");
+    std::vector<T> post;
+    this->post_ord(this->root, post);
+    return post;
 }
 
 template <class T>
@@ -201,6 +330,18 @@ void BinaryTree<T>::print_tree()
             p_tab = true;
         }
     }
+}
+
+template <class T>
+Node<T> *BinaryTree<T>::begin()
+{
+    return this->root;
+}
+
+template <class T>
+Node<T> *BinaryTree<T>::end()
+{
+    return nullptr;
 }
 
 template <class T>
